@@ -293,7 +293,15 @@ void doTestWorkerJob(Integer WORKER_ID, String SUITES, String STANDALONE_TESTS =
         if (!params.ANALYZER_OPTS.contains('-DWITH_VALGRIND=ON')) {
             step([$class: 'JUnitResultArchiver', testResults: 'pxc/sources/pxc/results/*.xml', healthScaleFactor: 1.0])
         }
-        archiveArtifacts 'pxc/sources/pxc/results/*.xml,pxc/sources/pxc/results/pxc80-test-mtr_logs-*.tar.gz,pxc/sources/pxc/results/mtr-test*.log'
+        // Archive every log the build and test scripts leave in results/, not just
+        // the mtr-test* ones. This is what gives a browsable per-build log view
+        // (cmake.log, make.log, make_install.log, build-commands.log,
+        // mtr-commands.log, the valgrind/sanitizer filters), equivalent to the
+        // work/ artifact directory the Percona Server job publishes.
+        // Once this lands, the 'mtr-test-build-' / 'mtr-test-commands-' prefixes
+        // the scripts currently use to satisfy the old glob can be dropped.
+        archiveArtifacts artifacts: 'pxc/sources/pxc/results/*.xml,pxc/sources/pxc/results/pxc80-test-mtr_logs-*.tar.gz,pxc/sources/pxc/results/*.log',
+                         allowEmptyArchive: true
     }
 }
 
@@ -333,7 +341,14 @@ void build(String SCRIPT) {
                 fi
                 ${SCRIPT} ${DOCKER_OS}
             " 2>&1 | tee build.log
+            gzip -f build.log
         """
+        // The pipeline's own comment on the Valgrind branch says the build log is
+        // what gets parsed for findings, but until now it was teed and dropped.
+        archiveArtifacts artifacts: 'build.log.gz', allowEmptyArchive: true
+        // Surface compiler warnings in the Jenkins UI, as the PS job does.
+        sh 'gunzip -kf build.log.gz'
+        recordIssues enabledForFailure: true, tools: [gcc(pattern: 'build.log')]
     }
 }
 
