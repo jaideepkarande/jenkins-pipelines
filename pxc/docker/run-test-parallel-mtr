@@ -60,6 +60,8 @@ docker run --rm --shm-size=${DOCKER_SHM_SIZE} \
     sudo mv ./pxc80-test-mtr_logs-${WORKER_NO}.tar.gz /tmp/pxc/results/ ||:
     sudo mv /tmp/results/*.xml /tmp/pxc/results/ ||:
     sudo mv /tmp/results/mtr-test.log /tmp/pxc/results/mtr-test-w_${WORKER_NO}.log ||:
+    # PXC-5267: publish the resolved MTR command line(s) for this worker.
+    sudo mv /tmp/results/mtr-commands.log /tmp/pxc/results/mtr-test-commands-w_${WORKER_NO}.log ||:
 
     # In case of Valgrind build, do some more logs processing
     case '${ANALYZER_OPTS}' in

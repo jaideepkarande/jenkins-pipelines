@@ -36,5 +36,16 @@ docker run --rm \
     sudo rm -rf /tmp/pxc/results
     sudo mkdir /tmp/pxc/results
     sudo mv /tmp/results/*.tar.gz /tmp/pxc/results/
+
+    # PXC-5267: publish the build logs alongside the tarballs. Until the pipeline
+    # groovy learns a wider glob, they are prefixed 'mtr-test-build-' so that the
+    # EXISTING archiveArtifacts pattern ('.../results/mtr-test*.log') picks them
+    # up with no Jenkins job change. Rename to plain cmake.log/make.log once the
+    # groovy change lands.
+    for f in build-commands cmake make make_install; do
+        if [ -f "/tmp/results/\${f}.log" ]; then
+            sudo mv "/tmp/results/\${f}.log" "/tmp/pxc/results/mtr-test-build-\${f}.log"
+        fi
+    done
     sudo chown -R $(id -u):$(id -g) /tmp/pxc/results /tmp/pxc/wsrep-lib /tmp/pxc/percona-xtradb-cluster-galera /tmp/pxc/mysql-test /tmp/pxc/target
 "

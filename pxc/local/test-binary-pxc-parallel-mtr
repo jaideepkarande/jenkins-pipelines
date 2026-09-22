@@ -373,6 +373,21 @@ if [[ $UNIT_TESTS == "1" ]]; then
     cat /proc/meminfo
     start=`date +%s`
 
+    # PXC-5267: record the exact MTR invocation for this suite before running it.
+    # MTR_ARGS is assembled from several places (build type, analyzer opts, skip
+    # lists, galera parallelism); without this the command that produced a result
+    # cannot be reconstructed from the artifacts.
+    {
+        echo "### suite=${suiteNoSlash}  $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+        echo "cwd=$PWD"
+        printf '%q ' env MTR_BUILD_THREAD=auto ./mysql-test-run.pl \
+            --parallel=${PARALLEL} --result-file --unit-tests-report \
+            ${tests} ${MTR_ARGS} --force --max-test-fail=0 \
+            --junit-output=${WORKDIR_ABS}/junit_${suiteNoSlash}.xml \
+            --junit-package="${DOCKER_OS}.${CMAKE_BUILD_TYPE}.${suiteNoSlash}"
+        echo; echo
+    } >> "${WORKDIR_ABS}/mtr-commands.log"
+
     env MTR_BUILD_THREAD=auto ./mysql-test-run.pl \
         --parallel=${PARALLEL} \
         --result-file \
