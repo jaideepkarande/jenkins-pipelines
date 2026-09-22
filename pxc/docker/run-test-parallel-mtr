@@ -71,11 +71,26 @@ docker run --rm --shm-size=${DOCKER_SHM_SIZE} \
         sudo grep -A16 'are definitely lost' mtr-test-w_${WORKER_NO}.log | sudo tee mtr-test-valgrind-definitelyLost-w_${WORKER_NO}.log > /dev/null || :
         sudo grep -B128 -A128 'Invalid read of size' mtr-test-w_${WORKER_NO}.log | sudo tee mtr-test-valgrind-InvalidRead-w_${WORKER_NO}.log > /dev/null || :
 
+        # Downloads utils.inc.sh but sourced jenkins-common.sh, so
+        # filter_valgrind_log was never defined and every step was swallowed by
+        # '||:' -- the filter has silently never run. Source what we downloaded,
+        # and only rewrite the log if the filter actually produced output.
         sudo bash -x -c '
-          wget https://raw.githubusercontent.com/Percona-Lab/ps-build/refs/heads/8.0/local/utils.inc.sh ||:
-          source jenkins-common.sh ||:
-          filter_valgrind_log mtr-test-w_${WORKER_NO}.log mtr-test-w_${WORKER_NO}.log.processed ||:
-          mv -f mtr-test-w_${WORKER_NO}.log.processed mtr-test-w_${WORKER_NO}.log ||:
+          wget -q https://raw.githubusercontent.com/Percona-Lab/ps-build/refs/heads/8.0/local/utils.inc.sh -O utils.inc.sh ||:
+          if [ -s utils.inc.sh ]; then
+            source ./utils.inc.sh ||:
+          fi
+          if type filter_valgrind_log >/dev/null 2>&1; then
+            filter_valgrind_log mtr-test-w_${WORKER_NO}.log mtr-test-w_${WORKER_NO}.log.processed ||:
+            if [ -s mtr-test-w_${WORKER_NO}.log.processed ]; then
+              mv -f mtr-test-w_${WORKER_NO}.log.processed mtr-test-w_${WORKER_NO}.log
+            else
+              echo "filter_valgrind_log produced no output; keeping the raw log"
+              rm -f mtr-test-w_${WORKER_NO}.log.processed
+            fi
+          else
+            echo "filter_valgrind_log unavailable; keeping the raw log"
+          fi
         '
     ;;
     esac
