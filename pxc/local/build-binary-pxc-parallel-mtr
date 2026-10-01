@@ -118,6 +118,13 @@ PROCESSORS=$(grep -c ^processor /proc/cpuinfo)
 COMMON_FLAGS="-DPERCONA_INNODB_VERSION=${PERCONA_SERVER_EXTENSION}"
 export CFLAGS=" ${COMMON_FLAGS} -static-libgcc ${MACHINE_SPECS_CFLAGS} ${CFLAGS:-}"
 export CXXFLAGS=" ${COMMON_FLAGS} ${MACHINE_SPECS_CFLAGS} ${CXXFLAGS:-}"
+
+# GCC 12 (Debian bookworm) emits a false -Wmaybe-uninitialized inside its own
+# avx512fintrin.h for vector-common/vector_distance.cc (PS 9.7.2). Keep the
+# warning, but do not let MYSQL_MAINTAINER_MODE turn it into an error.
+if [[ "$(gcc -dumpversion 2>/dev/null | cut -d. -f1)" == "12" ]]; then
+    export CXXFLAGS="${CXXFLAGS} -Wno-error=maybe-uninitialized"
+fi
 export MAKE_JFLAG="${MAKE_JFLAG:--j${PROCESSORS}}"
 
 # ------------------------------------------------------------------------------

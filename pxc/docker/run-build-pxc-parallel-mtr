@@ -31,6 +31,11 @@ docker run --rm \
 
     cp -r /tmp/source_downloads /tmp/results/source_downloads
     sudo chown -R mysql:mysql /tmp/pxc/wsrep-lib /tmp/pxc/percona-xtradb-cluster-galera /tmp/pxc/mysql-test /tmp/pxc/target || :
+    # PXC 9.7 needs gcc-toolset-14 on OL9, but the prebuilt OL9 image has only 12/13.
+    if [ '${SOURCE_IMAGE}' = 'oraclelinux:9' ] && [ ! -x /opt/rh/gcc-toolset-14/root/usr/bin/g++ ]; then
+        sudo yum -y install gcc-toolset-14-gcc gcc-toolset-14-gcc-c++ gcc-toolset-14-binutils \
+            gcc-toolset-14-annobin-annocheck gcc-toolset-14-annobin-plugin-gcc gcc-toolset-14-libatomic-devel
+    fi
     bash -x /tmp/scripts/build-binary-pxc-parallel-mtr /tmp/results /tmp/pxc
 
     sudo rm -rf /tmp/pxc/results
